@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>archive</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <p class="site-title">archive</p>
+  <nav class="tabs">
+    <button class="tab" data-tab="all">전체</button>
+    <button class="tab" data-tab="favorite">최애</button>
+  </nav>
+</header>
+
+<main>
+
+  <!-- ===================== 전체 탭 (메인) ===================== -->
+  <section class="view" id="view-all">
+    <div class="grid-heading">
+      <h2>전체</h2>
+      <span class="count" id="allCount"></span>
+    </div>
+    <div class="post-grid" id="postGrid"></div>
+    <div id="sentinel"></div>
+    <div class="loading-hint" id="loadingHint">불러오는 중…</div>
+  </section>
+
+  <!-- ===================== 최애 탭 ===================== -->
+  <section class="view" id="view-favorite">
+    <div class="fav-head">
+      <h2 id="favName"></h2>
+      <span class="team" id="favTeam"></span>
+    </div>
+    <p class="fav-note" id="favNote"></p>
+    <div class="fav-grid" id="favGrid"></div>
+  </section>
+
+</main>
+
+<footer>PERSONAL FAN ARCHIVE</footer>
+
+<!-- 게시글(선수) 상세 사진 모아보기 -->
+<div class="modal-overlay" id="modal">
+  <div class="modal-inner">
+    <div class="modal-top">
+      <div>
+        <div class="who" id="modalName"></div>
+        <div class="sub" id="modalSub"></div>
+      </div>
+      <button class="modal-close" id="modalClose">닫기 ✕</button>
+    </div>
+    <div class="post-modal-grid" id="modalGrid"></div>
+  </div>
+</div>
+
+<script>
+/* =========================================================
+   ✏️ 여기만 수정하면 됩니다.
+
+   1) FAVORITE : 최애 선수 정보 + 최애 탭에 그냥 다 늘어놓을 사진 목록
+   2) POSTS    : 전체 탭에 올라갈 "선수별 게시글" 목록.
+                 한 선수 = 한 게시글 = 사진 여러 장(images 배열)
+
+   이미지는 저장소에 images 폴더를 만들어 올린 뒤
+   "images/파일명.jpg" 형태로 경로만 적어주면 됩니다.
+   아직 사진이 없으면 "" 로 두면 빈 박스가 표시돼요.
+   ========================================================= */
+
+const FAVORITE = {
+  name: "선수 이름",
+  team: "소속팀 · 포지션 · #00",
+  note: "여기에 최애로 정한 이유나 코멘트를 적어보세요.",
+  photos: [
+    "", "", "", "", "", ""
+  ]
+};
+
+// 한 선수(POSTS 항목 하나)당 여러 장의 사진을 images 배열에 쌓으면 됩니다.
+const POSTS = [
+  { name: "선수 A", team: "포지션 · 팀명", images: ["", "", "", ""] },
+  { name: "선수 B", team: "포지션 · 팀명", images: ["", "", ""] },
+  { name: "선수 C", team: "포지션 · 팀명", images: ["", "", "", "", ""] },
+  { name: "선수 D", team: "포지션 · 팀명", images: ["", ""] },
+  { name: "선수 E", team: "포지션 · 팀명", images: ["", "", "", "", "", ""] },
+  { name: "선수 F", team: "포지션 · 팀명", images: ["", "", ""] },
+  { name: "선수 G", team: "포지션 · 팀명", images: ["", "", "", ""] },
+  { name: "선수 H", team: "포지션 · 팀명", images: ["", ""] }
+  // 필요한 만큼 계속 추가하세요. 무한 스크롤이 알아서 나눠서 보여줍니다.
+];
+
+/* ========================================================= */
+/* 아래는 자동으로 화면을 그려주는 코드예요                    */
+/* ========================================================= */
+
+function cell(img){
+  return img ? `<img src="${img}" alt="">` : `<div class="ph">사진 없음</div>`;
+}
+
+// ---- 최애 탭 ----
+document.getElementById('favName').textContent = FAVORITE.name;
+document.getElementById('favTeam').textContent = FAVORITE.team;
+document.getElementById('favNote').textContent = FAVORITE.note;
+document.getElementById('favGrid').innerHTML =
+  FAVORITE.photos.map(p => `<div class="cell">${cell(p)}</div>`).join('');
+
+// ---- 전체 탭 : 무한 스크롤 ----
+const PAGE_SIZE = 6;
+let loaded = 0;
+const postGrid = document.getElementById('postGrid');
+const loadingHint = document.getElementById('loadingHint');
+document.getElementById('allCount').textContent = POSTS.length + "명";
+
+function renderPostCard(post, index){
+  const cover = post.images[0];
+  return `
+    <div class="post-card" data-index="${index}">
+      ${cell(cover)}
+      <span class="count-badge">${post.images.length}장</span>
+      <span class="name-tag">${post.name}</span>
+    </div>
+  `;
+}
+
+function loadMore(){
+  const next = POSTS.slice(loaded, loaded + PAGE_SIZE);
+  if(next.length === 0){
+    loadingHint.textContent = "모두 불러왔어요";
+    return;
+  }
+  next.forEach((post, i) => {
+    postGrid.insertAdjacentHTML('beforeend', renderPostCard(post, loaded + i));
+  });
+  loaded += next.length;
+  if(loaded >= POSTS.length){
+    loadingHint.textContent = "모두 불러왔어요";
+  }
+}
+loadMore();
+
+const sentinel = document.getElementById('sentinel');
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if(entry.isIntersecting) loadMore();
+  });
+}, { rootMargin: "300px" });
+observer.observe(sentinel);
+
+// ---- 게시글 클릭 → 모달로 사진 전부 보기 ----
+const modal = document.getElementById('modal');
+postGrid.addEventListener('click', (e) => {
+  const card = e.target.closest('.post-card');
+  if(!card) return;
+  const post = POSTS[Number(card.dataset.index)];
+  document.getElementById('modalName').textContent = post.name;
+  document.getElementById('modalSub').textContent = post.team + " · " + post.images.length + "장";
+  document.getElementById('modalGrid').innerHTML =
+    post.images.map(img => `<div class="cell">${cell(img)}</div>`).join('');
+  modal.classList.add('open');
+});
+document.getElementById('modalClose').addEventListener('click', () => {
+  modal.classList.remove('open');
+});
+
+// ---- 탭 전환 ----
+const tabs = document.querySelectorAll('.tab');
+tabs.forEach(btn => {
+  btn.addEventListener('click', () => {
+    tabs.forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('view-' + btn.dataset.tab).classList.add('active');
+  });
+});
+// 기본으로 "전체" 탭이 열리도록
+tabs[0].classList.add('active');
+document.getElementById('view-all').classList.add('active');
+</script>
+
+</body>
+</html>
