@@ -28,7 +28,7 @@ const loadingHint = document.getElementById('loadingHint');
 document.getElementById('allCount').textContent = POSTS.length + "명";
 
 function renderPostCard(post, index){
-  const cover = post.images[0];
+  const cover = post.images[0] ? post.images[0].img : "";
   return `
     <div class="post-card" data-index="${index}">
       ${cell(cover)}
@@ -68,10 +68,29 @@ postGrid.addEventListener('click', (e) => {
   const card = e.target.closest('.post-card');
   if(!card) return;
   const post = POSTS[Number(card.dataset.index)];
+
   document.getElementById('modalName').textContent = post.name;
   document.getElementById('modalSub').textContent = post.team + " · " + post.images.length + "장";
-  document.getElementById('modalGrid').innerHTML =
-    post.images.map(img => `<div class="cell">${cell(img)}</div>`).join('');
+
+  // 이 선수 사진들에 붙은 tag 종류를 중복 없이 뽑아내기
+  const tags = [...new Set(post.images.map(p => p.tag).filter(Boolean))];
+
+  const tagBar = document.getElementById('modalTags');
+  const grid = document.getElementById('modalGrid');
+
+  tagBar.innerHTML = tags.map(t => `<button class="tag-btn" data-tag="${t}">${t}</button>`).join('');
+  grid.innerHTML = `<p class="tag-hint">위에서 태그를 선택하면 사진이 보여요</p>`;
+
+  tagBar.querySelectorAll('.tag-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      tagBar.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const selected = btn.dataset.tag;
+      const matched = post.images.filter(p => p.tag === selected);
+      grid.innerHTML = matched.map(p => `<div class="cell">${cell(p.img)}</div>`).join('');
+    });
+  });
+
   modal.classList.add('open');
 });
 document.getElementById('modalClose').addEventListener('click', () => {
